@@ -7,7 +7,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "jest",
-    "migrate": "knex migrate:latest --knexfile dist/knexfile.js"
+    "migrate": "knex migrate:latest --knexfile dist/config/knexfile.js"
   },
   "keywords": [],
   "author": "",
