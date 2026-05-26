@@ -1,193 +1,183 @@
 # Demo Credit Wallet Service
 
-> A mobile lending wallet API built for Lendsqr's backend engineering assessment. Enables borrowers to receive loans and make repayments through a secure wallet system.
+A production-ready MVP wallet service built with Node.js, Express, TypeScript, Knex, and MySQL.
 
----
+This project was developed as part of the Lendsqr Backend Engineering assessment.
 
-## Table of Contents
+## Live Deployment
 
-- [Overview](#overview)
-- [Tech Stack](#tech-stack)
-- [Architecture & Design Decisions](#architecture--design-decisions)
-- [ER Diagram](#er-diagram)
-- [Database Design](#database-design)
-- [API Documentation](#api-documentation)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [Running Tests](#running-tests)
-- [Deployment](#deployment)
+Production API:
 
----
-
-## Overview
-
-Demo Credit is an MVP wallet service that allows users to:
-
-- Create an account (with Karma blacklist check via Lendsqr Adjutor API)
-- Fund their wallet
-- Transfer funds to another user's wallet
-- Withdraw funds from their wallet
-
-Users flagged on the **Lendsqr Adjutor Karma blacklist** are blocked at onboarding — they can never be registered.
-
----
-
-## Tech Stack
-
-| Technology | Version | Reason |
-|---|---|---|
-| Node.js | LTS (v20+) | Stable, async-friendly runtime |
-| TypeScript | ^6.0 | Type safety and better DX |
-| Express.js | ^5.0 | Lightweight, battle-tested HTTP framework |
-| KnexJS | ^3.0 | SQL query builder with migration support |
-| MySQL2 | ^3.0 | Required database driver |
-| bcrypt | ^6.0 | Secure password hashing |
-| jsonwebtoken | ^9.0 | Faux token-based authentication |
-| Zod | ^4.0 | Runtime schema validation |
-| Jest + Supertest | ^30.0 | Unit and integration testing |
-| Helmet + CORS | Latest | Security middleware |
-
----
-
-## Architecture & Design Decisions
-
-### 1. Layered Architecture
-The project follows a **Controller → Service → Repository** pattern:
-- **Controllers** handle HTTP request/response logic only
-- **Services** contain business logic (blacklist check, balance validation)
-- **Database** queries are handled directly via Knex for simplicity at MVP scale
-
-### 2. Faux Token Authentication
-As specified, a JWT-based faux auth system is used — no refresh tokens or full session management. A token is issued on registration and must be sent as a `Bearer` token on protected routes.
-
-### 3. Karma Blacklist — Fail-Open Strategy
-If the Adjutor API is unreachable or returns an unexpected error, the system **fails open** (allows onboarding). This prevents a third-party outage from blocking all registrations. A 404 from Adjutor means the user is clean.
-
-### 4. Transaction Scoping
-All wallet mutations (fund, transfer, withdraw) are wrapped in **Knex database transactions**. This ensures atomicity — if any step fails, the entire operation is rolled back, preventing partial state (e.g. debiting sender without crediting receiver).
-
-### 5. UUID Primary Keys
-All tables use `UUID` as primary keys instead of auto-increment integers to avoid predictable IDs being exposed in the API.
-
-### 6. Dual Blacklist Check
-On registration, both the user's **email** and **BVN** are checked against the Karma blacklist, providing a stronger compliance check.
-
----
-
-## ER Diagram
-
-```
-┌─────────────────────────────┐
-│           USERS             │
-├─────────────────────────────┤
-│ id          UUID  (PK)      │
-│ first_name  VARCHAR         │
-│ last_name   VARCHAR         │
-│ email       VARCHAR (UNIQUE)│
-│ phone       VARCHAR (UNIQUE)│
-│ bvn         VARCHAR (UNIQUE)│
-│ password    VARCHAR         │
-│ created_at  TIMESTAMP       │
-│ updated_at  TIMESTAMP       │
-└──────────────┬──────────────┘
-               │ 1
-               │
-               │ has one
-               │
-               ▼ 1
-┌─────────────────────────────┐
-│          WALLETS            │
-├─────────────────────────────┤
-│ id          UUID  (PK)      │
-│ user_id     UUID  (FK)  ───►│ users.id
-│ balance     DECIMAL(15,2)   │
-│ currency    VARCHAR         │
-│ created_at  TIMESTAMP       │
-│ updated_at  TIMESTAMP       │
-└──────────────┬──────────────┘
-               │ 1
-               │
-               │ has many
-               │
-               ▼ N
-┌─────────────────────────────┐
-│        TRANSACTIONS         │
-├─────────────────────────────┤
-│ id                UUID (PK) │
-│ wallet_id         UUID (FK) │◄── wallets.id
-│ type              ENUM      │    (FUND|TRANSFER|WITHDRAW)
-│ amount            DECIMAL   │
-│ status            ENUM      │    (SUCCESS|FAILED|PENDING)
-│ reference         VARCHAR   │
-│ sender_wallet_id  UUID(nullable)
-│ receiver_wallet_id UUID(nullable)
-│ created_at        TIMESTAMP │
-│ updated_at        TIMESTAMP │
-└─────────────────────────────┘
+```text
+https://yeshwanth-lendsqr-be-test-production.up.railway.app
 ```
 
-### Relationships
-- **User → Wallet**: One-to-One (each user has exactly one wallet)
-- **Wallet → Transactions**: One-to-Many (a wallet can have many transactions)
-- `sender_wallet_id` and `receiver_wallet_id` on transactions are nullable FKs used to trace transfer direction
+GitHub Repository:
 
----
-
-## Database Design
-
-### `users`
-Stores account credentials and identity information. BVN and email are both unique and checked against the Karma blacklist at registration.
-
-### `wallets`
-Each user has one wallet. Balance is stored as `DECIMAL(15,2)` to avoid floating-point precision issues with financial data.
-
-### `transactions`
-Immutable ledger of all wallet events. Every fund, transfer, and withdrawal creates a transaction record. Transfers store both `sender_wallet_id` and `receiver_wallet_id` for full traceability.
-
----
-
-## API Documentation
-
-### Base URL
-```
-https://yeshwanth-lendsqr-be-test.<platform-domain>/api/v1
-```
-
-### Authentication
-All wallet endpoints require a `Bearer` token in the `Authorization` header:
-```
-Authorization: Bearer <your_jwt_token>
+```text
+https://github.com/y159/yeshwanth-lendsqr-be-test
 ```
 
 ---
 
-### Auth Endpoints
+# Features
 
-#### Register User
+The wallet service supports:
+
+- User registration
+- JWT-based authentication
+- Wallet creation on signup
+- Wallet funding
+- Wallet withdrawal
+- Wallet-to-wallet transfer
+- Transaction history
+- Karma blacklist validation using Lendsqr Adjutor API
+- MySQL database persistence
+- Railway production deployment
+- Unit testing with Jest and Supertest
+
+---
+
+# Tech Stack
+
+## Backend
+
+- Node.js
+- Express.js
+- TypeScript
+
+## Database
+
+- MySQL
+- Knex.js Query Builder
+
+## Authentication
+
+- JSON Web Tokens (JWT)
+- bcrypt password hashing
+
+## Testing
+
+- Jest
+- Supertest
+
+## Deployment
+
+- Railway
+
+---
+
+# Architecture
+
+The application follows a modular backend structure:
+
+```text
+Controller → Service → Database/Knex
 ```
-POST /api/v1/auth/register
+
+## Folder Structure
+
+```text
+src/
+├── config/
+│   ├── database.ts
+│   └── knexfile.ts
+├── controllers/
+├── database/
+│   └── migrations/
+├── middlewares/
+├── repositories/
+├── routes/
+├── services/
+├── tests/
+├── utils/
+├── app.ts
+└── server.ts
 ```
-**Request Body:**
+
+---
+
+# Database Design
+
+## Users Table
+
+Stores user account information.
+
+| Column | Type |
+|---|---|
+| id | UUID |
+| first_name | String |
+| last_name | String |
+| email | String |
+| phone | String |
+| bvn | String |
+| password | String |
+| created_at | Timestamp |
+
+## Wallets Table
+
+Stores wallet balances for users.
+
+| Column | Type |
+|---|---|
+| id | UUID |
+| user_id | UUID |
+| balance | Decimal |
+| currency | String |
+| created_at | Timestamp |
+
+## Transactions Table
+
+Stores funding, transfers, and withdrawals.
+
+| Column | Type |
+|---|---|
+| id | UUID |
+| wallet_id | UUID |
+| type | String |
+| amount | Decimal |
+| reference | String |
+| description | String |
+| created_at | Timestamp |
+
+---
+
+# API Endpoints
+
+## Health Check
+
+### GET /
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Lendsqr wallet service API is running"
+}
+```
+
+---
+
+## Register User
+
+### POST /api/v1/auth/register
+
+Request:
+
 ```json
 {
   "first_name": "John",
   "last_name": "Doe",
-  "email": "john@example.com",
+  "email": "john@test.com",
   "phone": "08012345678",
   "bvn": "12345678901",
-  "password": "password123"
+  "password": "Password123"
 }
 ```
-**Responses:**
-| Status | Description |
-|--------|-------------|
-| 201 | User registered successfully, returns token + walletId |
-| 400 | Missing required fields |
-| 403 | User is blacklisted (Karma check failed) |
-| 409 | Email already exists |
-| 500 | Internal server error |
 
-**Success Response:**
+Response:
+
 ```json
 {
   "success": true,
@@ -202,175 +192,97 @@ POST /api/v1/auth/register
 
 ---
 
-### Wallet Endpoints
+## Fund Wallet
 
-#### Get Wallet Balance
-```
-GET /api/v1/wallet/balance
-```
-**Success Response:**
-```json
-{
-  "success": true,
-  "message": "Wallet balance fetched successfully",
-  "data": {
-    "walletId": "uuid",
-    "balance": 5000.00,
-    "currency": "NGN"
-  }
-}
+### POST /api/v1/wallet/fund
+
+Headers:
+
+```text
+Authorization: Bearer <token>
 ```
 
----
+Request:
 
-#### Fund Wallet
-```
-POST /api/v1/wallet/fund
-```
-**Request Body:**
 ```json
 {
   "amount": 5000
 }
 ```
-**Responses:**
-| Status | Description |
-|--------|-------------|
-| 200 | Wallet funded successfully |
-| 400 | Invalid or missing amount |
-| 401 | Unauthorized |
-| 404 | Wallet not found |
 
 ---
 
-#### Transfer Funds
+## Get Wallet Balance
+
+### GET /api/v1/wallet/balance
+
+Headers:
+
+```text
+Authorization: Bearer <token>
 ```
-POST /api/v1/wallet/transfer
-```
-**Request Body:**
-```json
-{
-  "receiver_email": "jane@example.com",
-  "amount": 2000
-}
-```
-**Responses:**
-| Status | Description |
-|--------|-------------|
-| 200 | Transfer successful |
-| 400 | Missing fields / self-transfer / insufficient balance |
-| 401 | Unauthorized |
-| 404 | Receiver not found |
 
 ---
 
-#### Withdraw Funds
+## Transfer Funds
+
+### POST /api/v1/wallet/transfer
+
+Headers:
+
+```text
+Authorization: Bearer <token>
 ```
-POST /api/v1/wallet/withdraw
-```
-**Request Body:**
+
+Request:
+
 ```json
 {
+  "receiver_email": "receiver@test.com",
   "amount": 1000
 }
 ```
-**Responses:**
-| Status | Description |
-|--------|-------------|
-| 200 | Withdrawal successful |
-| 400 | Invalid amount / insufficient balance |
-| 401 | Unauthorized |
-| 404 | Wallet not found |
 
 ---
 
-#### Get Transactions
+## Withdraw Funds
+
+### POST /api/v1/wallet/withdraw
+
+Headers:
+
+```text
+Authorization: Bearer <token>
 ```
-GET /api/v1/wallet/transactions
-```
-**Success Response:**
+
+Request:
+
 ```json
 {
-  "success": true,
-  "message": "Transactions fetched successfully",
-  "data": [
-    {
-      "id": "uuid",
-      "wallet_id": "uuid",
-      "type": "FUND",
-      "amount": 5000.00,
-      "status": "SUCCESS",
-      "reference": "uuid",
-      "created_at": "2026-05-25T00:00:00.000Z"
-    }
-  ]
+  "amount": 500
 }
 ```
 
 ---
 
-## Project Structure
+## Transaction History
 
-```
-yeshwanth-lendsqr-be-test/
-├── src/
-│   ├── config/
-│   │   └── database.ts          # Knex DB connection instance
-│   ├── controllers/
-│   │   ├── auth.controller.ts   # Registration logic
-│   │   └── wallet.controller.ts # Fund, transfer, withdraw, balance
-│   ├── middlewares/
-│   │   └── auth.middleware.ts   # JWT verification
-│   ├── routes/
-│   │   ├── auth.routes.ts       # POST /auth/register
-│   │   └── wallet.routes.ts     # Wallet CRUD routes
-│   ├── services/
-│   │   └── karma.service.ts     # Adjutor blacklist check
-│   ├── database/
-│   │   └── migrations/          # Knex migration files
-│   ├── tests/
-│   │   ├── app.test.ts          # Health check test
-│   │   ├── auth.test.ts         # Auth endpoint tests
-│   │   ├── wallet.test.ts       # Wallet endpoint tests
-│   │   └── karma.test.ts        # Karma service tests
-│   ├── app.ts                   # Express app setup
-│   └── server.ts                # Server entry point
-├── knexfile.ts                  # Knex environment config
-├── jest.config.js               # Jest configuration
-├── tsconfig.json                # TypeScript config
-├── .env.example                 # Environment variable template
-└── package.json
+### GET /api/v1/wallet/transactions
+
+Headers:
+
+```text
+Authorization: Bearer <token>
 ```
 
 ---
 
-## Getting Started
+# Environment Variables
 
-### Prerequisites
-- Node.js v20+ (LTS)
-- MySQL 8+
-- npm
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/yeshwanthyellanki/yeshwanth-lendsqr-be-test.git
-cd yeshwanth-lendsqr-be-test
-
-# Install dependencies
-npm install
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your DB credentials and API keys
-```
-
-### Environment Variables
+Create a `.env` file in the project root.
 
 ```env
 PORT=5050
-NODE_ENV=development
 
 DB_HOST=127.0.0.1
 DB_PORT=3306
@@ -384,63 +296,201 @@ ADJUTOR_API_KEY=your_adjutor_api_key
 ADJUTOR_BASE_URL=https://adjutor.lendsqr.com/v2
 ```
 
-### Database Setup
+---
+
+# Local Development Setup
+
+## 1. Clone Repository
 
 ```bash
-# Create the database in MySQL
-mysql -u root -p -e "CREATE DATABASE lendsqr_wallet;"
-
-# Run migrations
-npx knex migrate:latest --knexfile knexfile.ts
+git clone https://github.com/y159/yeshwanth-lendsqr-be-test.git
 ```
 
-### Run the Server
+## 2. Install Dependencies
 
 ```bash
-# Development
-npm run dev
+npm install
+```
 
-# Production
-npm run build && npm start
+## 3. Create Database
+
+```bash
+mysql -u root -p
+```
+
+Inside MySQL:
+
+```sql
+CREATE DATABASE lendsqr_wallet;
+```
+
+## 4. Run Migrations
+
+```bash
+npm run migrate
+```
+
+## 5. Start Development Server
+
+```bash
+npm run dev
+```
+
+Server runs on:
+
+```text
+http://localhost:5050
 ```
 
 ---
 
-## Running Tests
+# Production Deployment
+
+The application is deployed on Railway with:
+
+- Railway Web Service
+- Railway MySQL Database
+- Automatic GitHub Deployments
+- Production Environment Variables
+
+Deployment URL:
+
+```text
+https://yeshwanth-lendsqr-be-test-production.up.railway.app
+```
+
+---
+
+# Running Tests
+
+Run tests using:
 
 ```bash
 npm test
 ```
 
-**Test Coverage:**
-- ✅ 28 tests across 4 test suites
-- Auth: register (success, missing fields, blacklisted by email, blacklisted by BVN, duplicate email)
-- Wallet: fund, transfer, withdraw, balance, transactions (positive + negative scenarios)
-- Karma Service: blacklisted, clean user, missing API key, null response, network error
+Current tests include:
+
+- Health check API test using Jest and Supertest
+
+Additional endpoint test cases can be added for:
+
+- Authentication
+- Wallet funding
+- Transfers
+- Withdrawals
+- Karma blacklist validation
 
 ---
 
-## Deployment
+# Security Considerations
 
-The API is deployed at:
-```
-https://yeshwanth-lendsqr-be-test.<platform-domain>
+The application includes:
+
+- Password hashing using bcrypt
+- JWT token authentication
+- Protected wallet routes
+- Database transaction handling
+- Input validation
+- Blacklist verification using Adjutor API
+
+---
+
+# Sample CURL Commands
+
+## Register User
+
+```bash
+curl -X POST http://localhost:5050/api/v1/auth/register \
+-H "Content-Type: application/json" \
+-d '{
+  "first_name":"Demo",
+  "last_name":"User",
+  "email":"demo@test.com",
+  "phone":"9999999999",
+  "bvn":"12345678901",
+  "password":"Password123"
+}'
 ```
 
-### Health Check
+## Fund Wallet
+
+```bash
+curl -X POST http://localhost:5050/api/v1/wallet/fund \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer YOUR_TOKEN" \
+-d '{"amount":5000}'
 ```
-GET /
-```
-```json
-{
-  "success": true,
-  "message": "Lendsqr wallet service API is running"
-}
+
+## Get Balance
+
+```bash
+curl http://localhost:5050/api/v1/wallet/balance \
+-H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 ---
 
-## Author
+# Design Decisions
 
-**Yeshwanth Yellanki**
-README'
+## Why Knex?
+
+Knex provides:
+
+- SQL flexibility
+- Migration support
+- Lightweight query building
+- Better control over raw SQL queries
+
+## Why JWT?
+
+JWT provides:
+
+- Stateless authentication
+- Simplicity for MVP authentication
+- Easy API protection
+
+## Why Railway?
+
+Railway provides:
+
+- Fast deployment workflow
+- Managed MySQL database
+- Automatic redeployments
+- Simple environment variable management
+
+---
+
+# Future Improvements
+
+Potential enhancements include:
+
+- Full authentication system
+- Refresh token implementation
+- Email verification
+- Swagger/OpenAPI documentation
+- Docker containerization
+- CI/CD pipelines
+- Redis caching
+- Rate limiting
+- Advanced transaction auditing
+- Pagination for transactions
+
+---
+
+# Author
+
+Yeshwanth Yellanki
+
+LinkedIn:
+
+```text
+https://linkedin.com/in/yesh284
+```
+
+GitHub:
+
+```text
+https://github.com/y159
+```
+
